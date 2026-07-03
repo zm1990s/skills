@@ -76,7 +76,8 @@ def build_entry(name_stem: str, fm: dict, description: str,
         "description": description,
         "author":      fm.get("author",  "社区"),
         "trigger":     fm.get("trigger", f"/{name_stem}"),
-        "file":        f"dist/{name_stem}.skill",
+        "file":        f"dist/{name_stem}.zip",
+        "sourcePath":  f"skills/{name_stem}",
         "size":        _fmt(size),
         "updatedAt":   datetime.fromtimestamp(mtime, tz=timezone.utc).strftime("%Y-%m-%d"),
     }
@@ -89,7 +90,8 @@ def _fmt(n: int) -> str:
 
 
 def zip_dir(src: Path, dest: Path) -> None:
-    """Pack src/ directory into dest zip, paths relative to src's parent."""
+    """Pack src/ directory into dest .zip, paths relative to src's parent."""
+    dest = dest.with_suffix(".zip")
     with zipfile.ZipFile(dest, "w", zipfile.ZIP_DEFLATED) as zf:
         for f in sorted(src.rglob("*")):
             if f.is_file():
@@ -134,7 +136,7 @@ def main():
             continue
 
         fm, description = extract_metadata(text)
-        dest = DIST_DIR / f"{skill_dir.name}.skill"
+        dest = DIST_DIR / f"{skill_dir.name}.zip"
         zip_dir(skill_dir, dest)
 
         mtime = max(f.stat().st_mtime for f in skill_dir.rglob("*") if f.is_file())
@@ -157,7 +159,7 @@ def main():
                 continue
 
             fm, description = extract_metadata(text)
-            dest = DIST_DIR / f"{name_stem}.skill"
+            dest = DIST_DIR / f"{name_stem}.zip"
             shutil.copy2(skill_file, dest)   # copy as-is, no extraction
 
             entry = build_entry(name_stem, fm, description, dest, skill_file.stat().st_mtime)
@@ -171,7 +173,7 @@ def main():
         "skills":      skills,
     }
     OUTPUT_FILE.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"\n→ skills.json: {len(skills)} skills  |  dist/: {len(list(DIST_DIR.glob('*.skill')))} files")
+    print(f"\n→ skills.json: {len(skills)} skills  |  dist/: {len(list(DIST_DIR.glob('*.zip')))} files")
 
 
 if __name__ == "__main__":
