@@ -3,11 +3,11 @@
 ## 快速开始
 
 1. Fork 本仓库
-2. 把你的 `.skill` 文件放进 `skills/` 目录
-3. 在文件内的 `SKILL.md` 里填写 frontmatter（见下）
+2. 在 `skills/` 目录下新建一个子目录，目录名即为 skill 的 ID（如 `skills/my-skill/`）
+3. 在该目录内创建 `SKILL.md`，填写 frontmatter（见下）以及 skill 内容
 4. 提交 Pull Request
 
-合并后，GitHub Actions 会自动更新 `skills.json`，页面立即显示你的 skill。
+合并后，GitHub Actions 会自动把目录打包为 `.zip` / `.skill`，更新 `skills.json`，页面立即显示你的 skill。
 
 ---
 
