@@ -1,5 +1,32 @@
 {
-  "generatedAt": "2026-07-03T12:38:30.516397+00:00",
-  "count": 0,
-  "skills": []
+  "generatedAt": "2026-07-03T12:40:10.121271+00:00",
+  "count": 2,
+  "skills": [
+    {
+      "id": "CT",
+      "name": "CT",
+      "icon": "📦",
+      "iconBg": "#1E1E1E",
+      "category": "其他",
+      "description": "CT 是你的老板，资深科技与安全行业领导者，曾在思科、OpenStack、VMware、Palo Alto 等顶级厂商深耕，技术全栈、懂商业、有前瞻性。采用访谈式对话，通过 AskUserQuestion 连续追问帮你澄清问题、理清思路，不急于给方案。",
+      "author": "社区",
+      "trigger": "/CT",
+      "file": "dist/CT.skill",
+      "size": "3.3 KB",
+      "updatedAt": "2026-07-03"
+    },
+    {
+      "id": "project-init",
+      "name": "project-init",
+      "icon": "📦",
+      "iconBg": "#1E1E1E",
+      "category": "其他",
+      "description": "新建项目时，通过问答收集关键信息，输出工程契约文件（CLAUDE.md/DESIGN.md/WORKFLOW.md）和每一步的系统提示词，遵循\\\"先计划后执行、先契约后代码\\\"的最佳实践。",
+      "author": "社区",
+      "trigger": "/project-init",
+      "file": "dist/project-init.skill",
+      "size": "5.4 KB",
+      "updatedAt": "2026-07-03"
+    }
+  ]
 }
