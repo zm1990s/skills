@@ -1,39 +1,55 @@
-name: Update Skills Manifest
- 
+name: Deploy to GitHub Pages
+
 on:
   push:
     branches: [main]
-    paths:
-      - "skills/**"          # any .skill file added, changed, or removed
-      - "scripts/generate_manifest.py"
- 
-  workflow_dispatch:         # allow manual trigger from GitHub UI
- 
+  workflow_dispatch:
+
 permissions:
-  contents: write            # needed to commit skills.json back
- 
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
- 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
- 
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
- 
-      - name: Generate skills.json
+
+      - name: Generate skills.json and dist/
         run: python scripts/generate_manifest.py
- 
-      - name: Commit & push manifest
+
+      - name: Commit & push manifest and dist
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add skills.json
-          # Only commit if something changed
-          git diff --cached --quiet || git commit -m "chore: update skills.json [skip ci]"
+          git add skills.json dist/
+          git diff --cached --quiet || git commit -m "chore: update skills.json and dist [skip ci]"
           git push
- 
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
