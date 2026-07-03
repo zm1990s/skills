@@ -1,0 +1,39 @@
+name: Update Skills Manifest
+ 
+on:
+  push:
+    branches: [main]
+    paths:
+      - "skills/**"          # any .skill file added, changed, or removed
+      - "scripts/generate_manifest.py"
+ 
+  workflow_dispatch:         # allow manual trigger from GitHub UI
+ 
+permissions:
+  contents: write            # needed to commit skills.json back
+ 
+jobs:
+  build:
+    runs-on: ubuntu-latest
+ 
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+ 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+ 
+      - name: Generate skills.json
+        run: python scripts/generate_manifest.py
+ 
+      - name: Commit & push manifest
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add skills.json
+          # Only commit if something changed
+          git diff --cached --quiet || git commit -m "chore: update skills.json [skip ci]"
+          git push
+ 
