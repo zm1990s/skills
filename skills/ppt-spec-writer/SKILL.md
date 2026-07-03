@@ -1,6 +1,8 @@
 ---
 name: "ppt-spec-writer"
 description: "将讨论内容、大纲或草稿整理成\"幻灯片生成规格说明文件\"（Markdown），作为后续幻灯片生成 Agent 的权威输入。当用户要求\"写一份 PPT 规格说明\"、\"准备幻灯片大纲\"、\"整理 PPT 规格文件\"或类似需求时使用。"
+category: 文档
+author: Hanliang
 ---
 
 # 幻灯片生成规格说明文件编写 Skill

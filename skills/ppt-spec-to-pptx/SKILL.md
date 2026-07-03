@@ -1,6 +1,8 @@
 ---
 name: "ppt-spec-to-pptx"
 description: "根据《幻灯片生成规格说明文件》（Markdown）生成正式、可编辑的 PowerPoint / PPTX 幻灯片。当用户提供规格 Markdown 文件并要求\"生成 PPT\"、\"按规格做幻灯片\"、\"把这份规格说明转成 PPTX\"或类似需求时使用。"
+category: 文档
+author: Hanliang
 ---
 
 # 幻灯片生成 Skill（规格 Markdown → PPTX）

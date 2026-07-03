@@ -2,6 +2,8 @@
 name: koi-check
 description: 用 Koi Security API 扫描 requirements.txt 中所有 PyPI 包的供应链风险，生成 JSON 报告。裁定：risk_level critical/high→BLOCK，medium→REQUEST_APPROVAL，low→PASS；API 不可用时 fail-safe 降级为 REQUEST_APPROVAL。
 allowed-tools: Bash, Read, Write
+category: 安全
+author: Matt
 ---
 
 # Koi 供应链扫描 Skill

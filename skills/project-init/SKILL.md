@@ -1,6 +1,8 @@
 ---
 name: "project-init"
 description: "新建项目时，通过问答收集关键信息，输出工程契约文件（CLAUDE.md/DESIGN.md/WORKFLOW.md）和每一步的系统提示词，遵循\"先计划后执行、先契约后代码\"的最佳实践。"
+category: 设计
+author: Matt
 ---
 
 # Project Init Skill
