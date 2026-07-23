@@ -1,0 +1,4 @@
+interface:
+  display_name: "High-Fidelity Editable PPTX"
+  short_description: "Rebuild reference slides with editable text and faithful visuals"
+  default_prompt: "Use $pptx-high-fidelity-reconstruction to recreate these screenshots as a high-fidelity editable PowerPoint deck."
