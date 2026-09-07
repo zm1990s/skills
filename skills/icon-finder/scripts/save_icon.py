@@ -1,24 +1,19 @@
 #!/usr/bin/env python3
-"""保存选中图标：取 SVG → 存工作目录 → 转 PNG（供 pptx 插图）。
+"""保存选中图标：取 SVG -> 存工作目录 -> 转 PNG（供 pptx 插图）。
 
 用法：
-    python save_icon.py "<关键词>" --id <图标id> [--source auto|iconfont|iconify|cncf]
-                         [--type auto|icon|logo]
-                         [--output-dir icons] [--out-name <文件名，不含扩展名>] [--size 512]
-                         [--color "#RRGGBB"]
-
-- 用与搜索相同的关键词 + id 精确定位候选（find_icons.py 打印的 id）。
-- 默认存 icons/<name>.svg 和 icons/<name>.png（512×512 透明底）。
-- 单独获取图片时，用 --output-dir . 直接保存到当前目录。
-- 打印生成的 PNG 相对路径，Agent 生成 pptx 时用它 add_picture。
+    python scripts/save_icon.py "<关键词>" --id <图标id>
+                                [--source auto|iconfont|iconify|dashboard|lobe|cncf]
+                                [--type auto|icon|logo]
+                                [--output-dir icons] [--out-name <文件名>] [--size 512]
+                                [--color "#RRGGBB"]
 """
 
+from __future__ import annotations
+
 import argparse
-import json
 import re
 import sys
-import urllib.parse
-import urllib.request
 from pathlib import Path
 
 try:
@@ -26,174 +21,73 @@ try:
 except ImportError:
     cairosvg = None
 
-API = "http://localhost:8000/icons/search"
-CNCF_BASE = "https://landscape.cncf.io"
+from icon_sources import search_icons, source_from_id, svg_from_match
 
 
-def _slug(name: str) -> str:
-    s = re.sub(r"[^a-zA-Z0-9_-]+", "-", name).strip("-")
-    return s or "icon"
+def slug(name: str) -> str:
+    clean = re.sub(r"[^a-zA-Z0-9_-]+", "-", name).strip("-")
+    return clean or "icon"
 
 
-def _request(url: str) -> bytes:
-    req = urllib.request.Request(
-        url,
-        headers={
-            "User-Agent": "Mozilla/5.0",
-            "Accept": "application/json,text/html,image/svg+xml,*/*",
-        },
-    )
-    with urllib.request.urlopen(req, timeout=20) as r:
-        return r.read()
-
-
-def _load_cncf_items() -> list[dict]:
-    """Load CNCF Landscape items. The site may serve the data inline in HTML."""
-    urls = [
-        f"{CNCF_BASE}/data/items-export.json",
-        f"{CNCF_BASE}/",
-    ]
-    last_error: Exception | None = None
-    for url in urls:
-        try:
-            text = _request(url).decode("utf-8", "ignore")
-            if text.lstrip().startswith(("{", "[")):
-                data = json.loads(text)
-            else:
-                marker = "window.baseDS"
-                marker_pos = text.find(marker)
-                if marker_pos < 0:
-                    continue
-                start = text.find("{", marker_pos)
-                if start < 0:
-                    continue
-                data, _ = json.JSONDecoder().raw_decode(text[start:])
-            if isinstance(data, dict) and isinstance(data.get("items"), list):
-                return data["items"]
-            if isinstance(data, list):
-                return data
-        except Exception as e:  # noqa: BLE001
-            last_error = e
-    if last_error:
-        raise last_error
-    raise RuntimeError("CNCF Landscape data not found")
-
-
-def _norm(s: str) -> str:
-    return re.sub(r"[^a-z0-9]+", " ", s.lower()).strip()
-
-
-def _cncf_score(item: dict, query: str) -> int:
-    q = _norm(query)
-    name = _norm(str(item.get("name", "")))
-    item_id = _norm(str(item.get("id", "")))
-    haystack = " ".join(
-        [
-            name,
-            item_id,
-            _norm(str(item.get("category", ""))),
-            _norm(str(item.get("subcategory", ""))),
-        ]
-    )
-    if not q:
-        return 0
-    if q == name:
-        return 1000
-    if q in name:
-        return 800 - abs(len(name) - len(q))
-    q_terms = q.split()
-    hits = sum(1 for term in q_terms if term in haystack)
-    return hits * 100 - abs(len(name) - len(q))
-
-
-def search_cncf(query: str, limit: int) -> dict:
-    matches = []
-    for item in _load_cncf_items():
-        if not item.get("logo"):
-            continue
-        score = _cncf_score(item, query)
-        if score <= 0:
-            continue
-        logo = str(item["logo"])
-        matches.append(
-            {
-                "source": "cncf",
-                "id": str(item.get("id") or logo),
-                "name": str(item.get("name") or item.get("id") or "logo"),
-                "category": item.get("category", ""),
-                "subcategory": item.get("subcategory", ""),
-                "logo": logo,
-                "svg_url": urllib.parse.urljoin(f"{CNCF_BASE}/", logo),
-                "_score": score,
-            }
-        )
-    matches.sort(key=lambda it: (-it["_score"], it["name"].lower()))
-    for item in matches:
-        item.pop("_score", None)
-    return {"source_used": "cncf", "items": matches[:limit]}
-
-
-def search_local_api(query: str, limit: int, source: str) -> dict:
-    qs = urllib.parse.urlencode({"q": query, "limit": limit, "source": source})
-    with urllib.request.urlopen(f"{API}?{qs}", timeout=15) as r:
-        return json.loads(r.read())
-
-
-def _logo_intent(query: str, icon_type: str) -> bool:
-    if icon_type == "logo":
-        return True
-    if icon_type == "icon":
-        return False
-    q = query.lower()
-    return any(word in q for word in (" logo", "logo ", "公司", "品牌", "商标"))
-
-
-def _svg_from_match(match: dict) -> str:
-    if match.get("source") == "cncf":
-        url = match.get("svg_url") or urllib.parse.urljoin(f"{CNCF_BASE}/", str(match["logo"]))
-        return _request(str(url)).decode("utf-8", "ignore")
-    return str(match["svg"])
+def strip_source_prefix(icon_id: str) -> str:
+    if icon_id.startswith(("dashboard:", "lobe:", "cncf:")):
+        return icon_id.split(":", 1)[1]
+    return icon_id
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("query")
-    ap.add_argument("--id", required=True, help="find_icons.py 打印的图标 id")
-    ap.add_argument("--source", default="auto", choices=["auto", "iconfont", "iconify", "cncf"])
-    ap.add_argument("--type", default="auto", choices=["auto", "icon", "logo"])
-    ap.add_argument("--output-dir", default="icons", help="输出目录；默认 icons，传 . 则保存到当前目录")
-    ap.add_argument("--out-name", default=None)
-    ap.add_argument("--size", type=int, default=512)
-    ap.add_argument("--color", default=None, help="替换 currentColor 的填充色，如 #2563eb")
-    ap.add_argument("--limit", type=int, default=50)
-    args = ap.parse_args()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("query")
+    parser.add_argument("--id", required=True, help="find_icons.py 打印的图标 id")
+    parser.add_argument(
+        "--source",
+        default="auto",
+        choices=["auto", "iconfont", "iconify", "dashboard", "lobe", "cncf"],
+    )
+    parser.add_argument("--type", default="auto", choices=["auto", "icon", "logo"])
+    parser.add_argument("--output-dir", default="icons", help="输出目录；默认 icons，传 . 则保存到当前目录")
+    parser.add_argument("--out-name", default=None)
+    parser.add_argument("--size", type=int, default=512)
+    parser.add_argument("--color", default=None, help="替换 currentColor 的填充色，如 #2563eb")
+    parser.add_argument("--limit", type=int, default=80)
+    args = parser.parse_args()
+
+    source = args.source
+    inferred_source = source_from_id(args.id)
+    if source == "auto" and inferred_source:
+        source = inferred_source
 
     try:
-        if args.source == "cncf":
-            data = search_cncf(args.query, args.limit)
-        elif args.source == "auto" and _logo_intent(args.query, args.type):
-            data = search_cncf(args.query, args.limit)
-            if not data.get("items"):
-                data = search_local_api(args.query, args.limit, "auto")
-        else:
-            data = search_local_api(args.query, args.limit, args.source)
-    except Exception as e:  # noqa: BLE001
-        print(f"搜索失败: {e}", file=sys.stderr)
+        data = search_icons(args.query, args.limit, source, args.type)
+    except Exception as exc:  # noqa: BLE001
+        print(f"搜索失败: {exc}", file=sys.stderr)
         return 1
 
-    match = next((it for it in data.get("items", []) if str(it["id"]) == str(args.id)), None)
+    wanted_ids = {args.id, strip_source_prefix(args.id)}
+    match = next(
+        (
+            item
+            for item in data.get("items", [])
+            if str(item["id"]) in wanted_ids or strip_source_prefix(str(item["id"])) in wanted_ids
+        ),
+        None,
+    )
     if match is None:
         print(f"未找到 id={args.id} 的图标（请先用 find_icons.py 确认 id）", file=sys.stderr)
         return 1
 
-    svg = _svg_from_match(match)
-    # SVG 常用 currentColor 表示随文字色；转 PNG 前替换成指定色，否则默认黑
+    try:
+        svg = svg_from_match(match)
+    except Exception as exc:  # noqa: BLE001
+        print(f"获取 SVG 失败: {exc}", file=sys.stderr)
+        return 1
+
     fill = args.color or "#000000"
     svg = svg.replace("currentColor", fill)
 
     out_dir = Path(args.output_dir)
-    out_dir.mkdir(exist_ok=True)
-    base = _slug(args.out_name or match["name"])
+    out_dir.mkdir(parents=True, exist_ok=True)
+    base = slug(args.out_name or str(match["name"]))
     svg_path = out_dir / f"{base}.svg"
     png_path = out_dir / f"{base}.png"
 
